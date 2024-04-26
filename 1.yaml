@@ -1,0 +1,11 @@
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OpenGL libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-glx
+      - name: Install OpenCV
+        run: pip install opencv-python
+      # Other steps in your workflow
