@@ -1,27 +1,23 @@
 import streamlit as st
-import time
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 
 # Function to preprocess the image
 def preprocess_image(image):
-    # Resize image to match model's expected sizing
     resized_image = cv2.resize(image, (100, 100))
-    # Normalize pixel values to [0, 1]
     normalized_image = resized_image.astype('float32') / 255.0
-    # Expand dimensions to create a batch of size 1
     input_image = np.expand_dims(normalized_image, axis=0)
     return input_image
 
 # Load the trained model
-model = load_model('/workspaces/TRY/model.h5')  # Adjust the path as per your model location
+model = load_model('model.h5')  # Make sure the model file is in the same directory
 
 # Streamlit app
 st.title("Image Classification App")
 st.markdown("-------------------")
 
-operation = st.selectbox("Choose an operation", ["None", "Upload a Picture"])
+operation = st.selectbox("Choose an operation", ["None", "Take a Picture", "Upload a Picture"])
 
 if operation == "Take a Picture":
     st.text("Please capture a picture")
@@ -32,7 +28,9 @@ if operation == "Take a Picture":
         st.image(image_capture, caption="Captured Image", use_column_width=True)
         
         # Preprocess the captured image
-        processed_image = preprocess_image(image_capture)
+        bytes_data = image_capture.getvalue()
+        image = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        processed_image = preprocess_image(image)
         
         # Predict the class probabilities
         probabilities = model.predict(processed_image)
@@ -53,6 +51,9 @@ if operation == "Upload a Picture":
         file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
         image_upload = cv2.imdecode(file_bytes, 1)
         
+        # Display the uploaded image
+        st.image(image_upload, caption="Uploaded Image", use_column_width=True)
+        
         # Preprocess the uploaded image
         processed_image = preprocess_image(image_upload)
         
@@ -65,4 +66,3 @@ if operation == "Upload a Picture":
             st.write("Predicted class: Recyclable")
         else:
             st.write("Predicted class: Organic")
-
