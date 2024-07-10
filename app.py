@@ -2,6 +2,60 @@ import streamlit as st
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
+import hashlib
+from datetime import datetime
+import json
+import os
+
+# Function to hash passwords
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Dummy user database file
+user_db_file = "user_db.json"
+
+# Load or initialize user database
+def load_user_db():
+    if os.path.exists(user_db_file):
+        with open(user_db_file, "r") as file:
+            return json.load(file)
+    else:
+        return {}
+
+def save_user_db(users):
+    with open(user_db_file, "w") as file:
+        json.dump(users, file)
+
+users = load_user_db()
+
+# File to store user history
+history_file = "user_history.json"
+
+# Initialize session state
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# Function to load user history
+def load_history(username):
+    if os.path.exists(history_file):
+        with open(history_file, "r") as file:
+            data = json.load(file)
+            return data.get(username, [])
+    return []
+
+# Function to save user history
+def save_history(username, history):
+    data = {}
+    if os.path.exists(history_file):
+        with open(history_file, "r") as file:
+            data = json.load(file)
+    data[username] = history
+    with open(history_file, "w") as file:
+        json.dump(data, file)
 
 # Function to preprocess the image
 def preprocess_image(image):
@@ -10,137 +64,115 @@ def preprocess_image(image):
     input_image = np.expand_dims(normalized_image, axis=0)
     return input_image
 
-model = load_model('model.h5')  
+# Load model
+model = load_model('model.h5')
 
-
+# Streamlit app layout
 st.set_page_config(page_title="EcoTrack", page_icon="🌍", layout="wide")
 
+# Login form
+def login():
+    st.session_state.username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if st.session_state.username in users and users[st.session_state.username] == hash_password(password):
+            st.session_state.authenticated = True
+            st.session_state.history = load_history(st.session_state.username)
+            st.success(f"Welcome, {st.session_state.username}!")
+        else:
+            st.error("Invalid username or password")
 
-st.markdown(
-    """
-    <style>
-    .main {
-        background-color: black;
-        padding: 10px;
-        border-radius: 10px;
-    }
-    .stTextInput > div > div > input {
-        background-color: #F1F8E9;
-        color: #000;
-    }
-    .stButton > button {
-        background-color: #388E3C;
-        color: white;
-    }
-    .stFileUploader > div > button {
-        background-color: #388E3C;
-        color: white;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# Signup form
+def signup():
+    new_username = st.text_input("New Username")
+    new_password = st.text_input("New Password", type="password")
+    if st.button("Signup"):
+        if new_username in users:
+            st.error("Username already exists")
+        else:
+            users[new_username] = hash_password(new_password)
+            save_user_db(users)
+            st.success("User created successfully. Please log in.")
 
-st.title("EcoTrack: Waste Classification and Disposal Guidance")
-st.markdown("## Upload an Image to Classify")
-st.markdown("### Identify whether the waste is recyclable or organic")
+# Logout function
+def logout():
+    save_history(st.session_state.username, st.session_state.history)
+    st.session_state.authenticated = False
+    st.session_state.username = ""
+    st.session_state.history = []
+    st.success("Logged out successfully")
 
-uploaded_file = st.file_uploader("Choose an image...", type="jpg")
-
+# Function to classify image
 def classify_image(image):
     processed_image = preprocess_image(image)
     probabilities = model.predict(processed_image)
-    threshold = 0.5  
+    threshold = 0.5
     return "Recyclable" if probabilities[0][0] > threshold else "Organic"
 
-if uploaded_file is not None:
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    image_upload = cv2.imdecode(file_bytes, 1)
-    prediction = classify_image(image_upload)
-    st.image(image_upload, caption=f"Uploaded Image - Predicted: {prediction}", use_column_width=True)
-    
-    if prediction == "Recyclable":
-        st.success("This item should be placed in the blue recycling bin. Examples include paper, cardboard, plastic bottles, and metal cans.")
-    else:
-        st.error("This item should be placed in the green waste bucket. Examples include food scraps, yard trimmings, and soiled paper.")
-
-
-def chatbot_response(user_input):
-    suggestions = {
-        "organic": {
-            "description": "Organic waste includes items that can be composted.",
-            "examples": [
-                ("Food scraps", "DATASET/DATASET/TEST/O/O_13963.jpg")
-            ],
-            "disposal": "You should place organic waste in the green waste bucket.",
-            "image_path": "DATASET/DATASET/TEST/O/O_13963.jpg"
-        },
-        "recyclable": {
-            "description": "Recyclable waste includes items that can be processed and reused.",
-            "examples": [
-              
-                ("waste cloths and all can be recycable ", "DATASET/DATASET/TEST/R/R_10000.jpg")
-            ],
-            "disposal": "You should place recyclable waste in the blue recycling bin.",
-            "image_path": "DATASET/DATASET/TEST/R/R_10000.jpg"
+# Main app function
+def main_app():
+    st.markdown(
+        """
+        <style>
+        .main {
+            background-color: black;
+            padding: 10px;
+            border-radius: 10px;
         }
-    }
-    response = ""
-    if "organic" in user_input.lower():
-        response = suggestions["organic"]["description"]
-        response += "\n\n**Examples:**"
-        for item, img in suggestions["organic"]["examples"]:
-            response += f"\n- {item}"
-            st.image(img, caption=item, width=100)
-        response += f"\n\n{suggestions['organic']['disposal']}"
-        st.image(suggestions["organic"]["image_path"], caption="Organic Waste Example", use_column_width=True)
-    elif "recyclable" in user_input.lower():
-        response = suggestions["recyclable"]["description"]
-        response += "\n\n**Examples:**"
-        for item, img in suggestions["recyclable"]["examples"]:
-            response += f"\n- {item}"
-            st.image(img, caption=item, width=100)
-        response += f"\n\n{suggestions['recyclable']['disposal']}"
-        st.image(suggestions["recyclable"]["image_path"], caption="Recyclable Waste Example", use_column_width=True)
+        .stTextInput > div > div > input {
+            background-color: #F1F8E9;
+            color: #000;
+        }
+        .stButton > button {
+            background-color: #388E3C;
+            color: white;
+        }
+        .stFileUploader > div > button {
+            background-color: #388E3C;
+            color: white;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.title("EcoTrack: Waste Classification and Disposal Guidance")
+    st.markdown("## Upload an Image to Classify")
+    st.markdown("### Identify whether the waste is recyclable or organic")
+
+    uploaded_file = st.file_uploader("Choose an image...", type="jpg")
+
+    if uploaded_file is not None:
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        image_upload = cv2.imdecode(file_bytes, 1)
+        prediction = classify_image(image_upload)
+        st.image(image_upload, caption=f"Uploaded Image - Predicted: {prediction}", use_column_width=True)
+        
+        st.session_state.history.append({
+            "timestamp": datetime.now().isoformat(),
+            "image": uploaded_file.name,
+            "prediction": prediction
+        })
+
+        if prediction == "Recyclable":
+            st.success("This item should be placed in the blue recycling bin. Examples include paper, cardboard, plastic bottles, and metal cans.")
+        else:
+            st.error("This item should be placed in the green waste bucket. Examples include food scraps, yard trimmings, and soiled paper.")
+        
+    st.markdown("## History")
+    if st.session_state.history:
+        for record in st.session_state.history:
+            st.markdown(f"**Time:** {record['timestamp']}")
+            st.markdown(f"**Image:** {record['image']}")
+            st.markdown(f"**Prediction:** {record['prediction']}")
     else:
-        response = "Please ask about either organic or recyclable waste."
-    return response
+        st.markdown("No history available.")
 
-st.markdown("## Help and Query")
-st.markdown("### Ask EcoTrack about waste disposal")
-
-user_query = st.text_input("Ask me about waste disposal (e.g., 'What is organic waste?' or 'Where do I put recyclables?')")
-
-if user_query:
-    response = chatbot_response(user_query)
-    st.write(response)
-
-# Additional Features
-st.markdown("## Waste Disposal Tips")
-st.markdown("""
-- **Reduce**: Minimize waste by choosing reusable items and avoiding single-use products.
-- **Reuse**: Find ways to reuse items before discarding them. For example, use jars as storage containers.
-- **Recycle**: Properly sort your recyclables to ensure they are processed correctly.
-- **Compost**: Compost organic waste to create nutrient-rich soil for gardening.
-""")
-
-st.markdown("## Frequently Asked Questions (FAQs)")
-faq_expander = st.expander("Click to see FAQs")
-
-with faq_expander:
-    st.markdown("""
-    **Q: What items can be recycled?**
-    - A: Common recyclable items include paper, cardboard, plastic bottles, metal cans, and glass containers.
-    
-    **Q: What is considered organic waste?**
-    - A: Organic waste includes food scraps, yard trimmings, and soiled paper products.
-    
-    **Q: How can I reduce waste at home?**
-    - A: Reduce waste by choosing reusable products, buying in bulk, and composting organic waste.
-    
-    **Q: Where can I dispose of hazardous waste?**
-    - A: Hazardous waste should be taken to designated disposal facilities. Check with your local waste management for details.
-    """)
-
-st.markdown("## Contact Us")
-st.markdown("""
-If you have any questions or need further assistance, please contact us at [support@ecotrack.com](mailto:support@ecotrack.com).
-""")
+# App layout
+if not st.session_state.authenticated:
+    option = st.sidebar.selectbox("Choose an option", ["Login", "Signup"])
+    if option == "Login":
+        login()
+    elif option == "Signup":
+        signup()
+else:
+    st.sidebar.button("Logout", on_click=logout)
+    main_app()
