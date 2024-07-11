@@ -70,7 +70,7 @@ model = load_model('model.h5')
 # Streamlit app layout
 st.set_page_config(page_title="EcoTrack", page_icon="🌍", layout="wide")
 
-# Login form
+
 def login():
     st.session_state.username = st.text_input("Username")
     password = st.text_input("Password", type="password")
@@ -82,7 +82,7 @@ def login():
         else:
             st.error("Invalid username or password")
 
-# Signup form
+
 def signup():
     new_username = st.text_input("New Username")
     new_password = st.text_input("New Password", type="password")
@@ -94,7 +94,6 @@ def signup():
             save_user_db(users)
             st.success("User created successfully. Please log in.")
 
-# Logout function
 def logout():
     save_history(st.session_state.username, st.session_state.history)
     st.session_state.authenticated = False
@@ -102,14 +101,14 @@ def logout():
     st.session_state.history = []
     st.success("Logged out successfully")
 
-# Function to classify image
+
 def classify_image(image):
     processed_image = preprocess_image(image)
     probabilities = model.predict(processed_image)
     threshold = 0.5
     return "Recyclable" if probabilities[0][0] > threshold else "Organic"
 
-# Main app function
+
 def main_app():
     st.markdown(
         """
@@ -165,6 +164,48 @@ def main_app():
             st.markdown(f"**Prediction:** {record['prediction']}")
     else:
         st.markdown("No history available.")
+
+    st.markdown("## FAQ")
+    faq_section()
+
+    st.markdown("## Chatbot")
+    chatbot_section()
+
+
+def faq_section():
+    st.markdown("""
+    ### Frequently Asked Questions
+    **Q: What items are considered recyclable?**
+    - A: Recyclable items include paper, cardboard, plastic bottles, and metal cans.
+
+    **Q: What items are considered organic waste?**
+    - A: Organic waste includes food scraps, yard trimmings, and soiled paper.
+
+    **Q: How do I dispose of electronic waste?**
+    - A: Electronic waste should be taken to designated e-waste recycling centers.
+
+    **Q: Can glass be recycled?**
+    - A: Yes, glass bottles and jars can be recycled.
+    """)
+
+
+def chatbot_section():
+    st.markdown("### Ask the Chatbot")
+    user_input = st.text_input("Enter your question:")
+    if st.button("Submit"):
+        response = generate_response(user_input)
+        st.write(response)
+
+
+def generate_response(user_input):
+    # Simple hardcoded responses for demonstration purposes
+    if "recycle" in user_input.lower():
+        return "Recyclable items include paper, cardboard, plastic bottles, and metal cans."
+    elif "organic" in user_input.lower():
+        return "Organic waste includes food scraps, yard trimmings, and soiled paper."
+    else:
+        return "Sorry, I don't have an answer to that question."
+
 
 # App layout
 if not st.session_state.authenticated:
