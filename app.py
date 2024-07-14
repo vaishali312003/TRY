@@ -7,14 +7,12 @@ from datetime import datetime
 import json
 import os
 
-# Function to hash passwords
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Dummy user database file
 user_db_file = "user_db.json"
+history_file = "user_history.json"
 
-# Load or initialize user database
 def load_user_db():
     if os.path.exists(user_db_file):
         with open(user_db_file, "r") as file:
@@ -26,20 +24,6 @@ def save_user_db(users):
     with open(user_db_file, "w") as file:
         json.dump(users, file)
 
-users = load_user_db()
-
-# File to store user history
-history_file = "user_history.json"
-
-# Initialize session state
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-# Function to load user history
 def load_history(username):
     if os.path.exists(history_file):
         with open(history_file, "r") as file:
@@ -47,7 +31,6 @@ def load_history(username):
             return data.get(username, [])
     return []
 
-# Function to save user history
 def save_history(username, history):
     data = {}
     if os.path.exists(history_file):
@@ -57,21 +40,26 @@ def save_history(username, history):
     with open(history_file, "w") as file:
         json.dump(data, file)
 
-# Function to preprocess the image
 def preprocess_image(image):
     resized_image = cv2.resize(image, (100, 100))
     normalized_image = resized_image.astype('float32') / 255.0
     input_image = np.expand_dims(normalized_image, axis=0)
     return input_image
 
-# Load model
 model = load_model('model.h5')
 
-# Streamlit app layout
 st.set_page_config(page_title="EcoTrack", page_icon="🌍", layout="wide")
 
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-def login():
+if "username" not in st.session_state:
+    st.session_state.username = ""
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+def login(users):
     st.session_state.username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
@@ -82,8 +70,7 @@ def login():
         else:
             st.error("Invalid username or password")
 
-
-def signup():
+def signup(users):
     new_username = st.text_input("New Username")
     new_password = st.text_input("New Password", type="password")
     if st.button("Signup"):
@@ -101,38 +88,13 @@ def logout():
     st.session_state.history = []
     st.success("Logged out successfully")
 
-
 def classify_image(image):
     processed_image = preprocess_image(image)
     probabilities = model.predict(processed_image)
     threshold = 0.5
     return "Recyclable" if probabilities[0][0] > threshold else "Organic"
 
-
 def main_app():
-    st.markdown(
-        """
-        <style>
-        .main {
-            background-color: black;
-            padding: 10px;
-            border-radius: 10px;
-        }
-        .stTextInput > div > div > input {
-            background-color: #F1F8E9;
-            color: #000;
-        }
-        .stButton > button {
-            background-color: #388E3C;
-            color: white;
-        }
-        .stFileUploader > div > button {
-            background-color: #388E3C;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
     st.title("EcoTrack: Waste Classification and Disposal Guidance")
     st.markdown("## Upload an Image to Classify")
     st.markdown("### Identify whether the waste is recyclable or organic")
@@ -146,7 +108,7 @@ def main_app():
         st.image(image_upload, caption=f"Uploaded Image - Predicted: {prediction}", use_column_width=True)
         
         st.session_state.history.append({
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "image": uploaded_file.name,
             "prediction": prediction
         })
@@ -157,11 +119,10 @@ def main_app():
             st.error("This item should be placed in the green waste bucket. Examples include food scraps, yard trimmings, and soiled paper.")
         
     st.markdown("## History")
-    if st.session_state.history:
-        for record in st.session_state.history:
-            st.markdown(f"**Time:** {record['timestamp']}")
-            st.markdown(f"**Image:** {record['image']}")
-            st.markdown(f"**Prediction:** {record['prediction']}")
+    history_data = st.session_state.history
+    if history_data:
+        history_table = [{"Timestamp": record['timestamp'], "Image": record['image'], "Prediction": record['prediction']} for record in history_data]
+        st.table(history_table)
     else:
         st.markdown("No history available.")
 
@@ -170,7 +131,6 @@ def main_app():
 
     st.markdown("## Chatbot")
     chatbot_section()
-
 
 def faq_section():
     st.markdown("""
@@ -188,7 +148,6 @@ def faq_section():
     - A: Yes, glass bottles and jars can be recycled.
     """)
 
-
 def chatbot_section():
     st.markdown("### Ask the Chatbot")
     user_input = st.text_input("Enter your question:")
@@ -196,9 +155,7 @@ def chatbot_section():
         response = generate_response(user_input)
         st.write(response)
 
-
 def generate_response(user_input):
-    # Simple hardcoded responses for demonstration purposes
     if "recycle" in user_input.lower():
         return "Recyclable items include paper, cardboard, plastic bottles, and metal cans."
     elif "organic" in user_input.lower():
@@ -207,13 +164,18 @@ def generate_response(user_input):
         return "Sorry, I don't have an answer to that question."
 
 
-# App layout
+users = load_user_db()
+
+st.sidebar.title("User Database")
+if st.session_state.authenticated:
+    st.sidebar.subheader(f"Logged in as: {st.session_state.username}")
+    st.sidebar.button("Logout", on_click=logout)
+
 if not st.session_state.authenticated:
     option = st.sidebar.selectbox("Choose an option", ["Login", "Signup"])
     if option == "Login":
-        login()
+        login(users)
     elif option == "Signup":
-        signup()
+        signup(users)
 else:
-    st.sidebar.button("Logout", on_click=logout)
     main_app()

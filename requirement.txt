@@ -1,4 +1,9 @@
 streamlit
-opencv-python-headless
-numpy
 tensorflow
+opencv-python-headless
+matplotlib
+pandas
+requests
+numpy
+pillow
+chatterbot
