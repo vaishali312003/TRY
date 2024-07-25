@@ -2,7 +2,7 @@ Real-Time Waste Recognition System with Streamlit, CNN, and JSON
 ![Screenshot (384)](https://github.com/user-attachments/assets/dd25bfe5-e285-41f0-b8a7-971fb6f894d3)
 
 
-Welcome to the Real-Time Waste Recognition System! This project utilizes Streamlit and a Convolutional Neural Network (CNN) to classify waste items into organic and recyclable categories based on uploaded images. User data is stored in JSON format for real-time database management.
+###### Welcome to the Real-Time Waste Recognition System! This project utilizes Streamlit and a Convolutional Neural Network (CNN) to classify waste items into organic and recyclable categories based on uploaded images. User data is stored in JSON format for real-time database management.
 ![Screenshot (383)](https://github.com/user-attachments/assets/3ace785c-1c19-4fe9-a42b-31d4f9c52d5b)
 ![Screenshot (385)](https://github.com/user-attachments/assets/e0dfd58f-5dc8-4db3-a08f-043b706701eb)
 
@@ -28,23 +28,24 @@ To run the project locally, follow these steps:
 
 Clone the repository:
 
-bash
+#### bash
+
 Copy code
 git clone [http repo link]
 Install dependencies:
 
-Copy code
+#### Copy code
 pip install -r requirements.txt
 Run the Streamlit application:
 
-arduino
+#### arduino
 Copy code
 streamlit run app.py
 Open your web browser and navigate to the Streamlit app running locally.
 
-Demo
+#### Demo
 Include a screenshot or GIF here showcasing the Streamlit interface and how users can upload images for classification.
 
-Contributing
+### Contributing
 Contributions are welcome! If you'd like to contribute to this project, fork the repository and submit a pull request with your proposed changes.
 
