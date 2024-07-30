@@ -95,7 +95,7 @@ def classify_image(image):
     return "Recyclable" if probabilities[0][0] > threshold else "Organic"
 
 def main_app():
-    st.title("EcoTrack: Waste Classification and Disposal Guidance")
+    st.title("EcoTrack: Waste Classification GUIDE")
     st.markdown("## Upload an Image to Classify")
     st.markdown("### Identify whether the waste is recyclable or organic")
 
